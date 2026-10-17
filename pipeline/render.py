@@ -10,8 +10,8 @@ from piper import PiperVoice
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 W, H, FPS = 1080, 1920, 30
-B = os.path.join(ROOT, "assets", "Poppins-Bold.ttf")
-R = os.path.join(ROOT, "assets", "Poppins-Regular.ttf")
+B = os.path.join(ROOT, "Poppins-Bold.ttf")
+R = os.path.join(ROOT, "Poppins-Regular.ttf")
 VOICE = os.environ.get("PIPER_VOICE", os.path.join(ROOT, "models", "en-us-ryan-high"))
 NAVY = (11, 27, 58); SAFF = (255, 153, 51); GOLD = (255, 214, 102); WHITE = (255, 255, 255)
 
