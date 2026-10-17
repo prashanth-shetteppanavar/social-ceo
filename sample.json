@@ -1,0 +1,26 @@
+{
+  "topic": "Bombay High Court firecracker rule (sample)",
+  "title": "Diwali 2026: Can You Burst Crackers on Streets? Bombay HC Rule Explained",
+  "description": "On Oct 15, 2026, the Bombay High Court said its ban on bursting crackers on public roads, streets, lanes and footpaths applies all year. Making and selling firecrackers is not banned. Sources: PTI, Bar & Bench, LawChakra. #Diwali2026 #Shorts",
+  "tags": ["Diwali 2026", "Bombay High Court", "firecracker rules"],
+  "needs_review": true,
+  "sources": "PTI, Bar & Bench, LawChakra | Oct 15, 2026",
+  "scenes": [
+    {"label": "DIWALI 2026", "main": ["Can you burst crackers", "outside your building?"], "size": 68,
+     "spoken": "Namaste! I am Deepu the Diya. Can you burst crackers outside your building this Diwali? Let me explain.",
+     "keywords": ["diwali", "crackers"]},
+    {"label": "BOMBAY HIGH COURT, OCT 15", "main": ["The street cracker", "ban now applies"],
+     "accent": "ALL YEAR", "accent_word": "all",
+     "chips": [{"text": "Public roads", "at": "roads"}, {"text": "Streets", "at": "streets"}, {"text": "Lanes", "at": "lanes"}, {"text": "Footpaths", "at": "footpaths"}],
+     "spoken": "On October fifteenth, the Bombay High Court said its ban on bursting crackers on public roads, streets, lanes and footpaths applies all year.",
+     "caption": "On October 15th, the Bombay High Court said its ban on bursting crackers on public roads, streets, lanes and footpaths applies all year.",
+     "keywords": ["public", "roads", "streets", "lanes", "footpaths", "all", "year"]},
+    {"label": "THE FINE PRINT", "main": ["Making and selling", "is not banned"], "size": 76,
+     "spoken": "Making and selling firecrackers is not banned. The rule is about bursting them in public places.",
+     "keywords": ["banned", "bursting", "public"]},
+    {"label": "CELEBRATE SAFELY", "main": ["Share this with", "your family group"],
+     "accent": "Happy Diwali", "accent_word": "happy", "accent_size": 120,
+     "spoken": "So celebrate safely, light a diya, and share this with your family group. Happy Diwali!",
+     "keywords": ["share", "happy", "diya"]}
+  ]
+}

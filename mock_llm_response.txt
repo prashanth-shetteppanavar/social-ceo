@@ -1,0 +1,5 @@
+```json
+{"topic":"Test","title":"Test video","description":"Desc #Shorts","tags":["a"],"needs_review":true,"sources":"Test",
+"scenes":[{"label":"hello","main":["Line one"],"spoken":"This is a test sentence about roads and streets.","accent":"TEST","accent_word":"MISSING","chips":[{"text":"Roads","at":"roads"},{"text":"Bad","at":"nothere"}],"keywords":["roads"]},
+{"label":"two","main":"Single string","spoken":"Second scene."},{"label":"cta","main":["Share it"],"spoken":"Please share this."}]}
+```
