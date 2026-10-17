@@ -10,8 +10,13 @@ from piper import PiperVoice
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 W, H, FPS = 1080, 1920, 30
-B = os.path.join(ROOT, "Poppins-Bold.ttf")
-R = os.path.join(ROOT, "Poppins-Regular.ttf")
+def _font(name):
+    for d in (os.path.join(ROOT, "assets"), ROOT, HERE):
+        f = os.path.join(d, name)
+        if os.path.exists(f): return f
+    raise FileNotFoundError(name + " not found in assets/, repo root or pipeline/")
+B = _font("Poppins-Bold.ttf")
+R = _font("Poppins-Regular.ttf")
 VOICE = os.environ.get("PIPER_VOICE", os.path.join(ROOT, "models", "en-us-ryan-high"))
 NAVY = (11, 27, 58); SAFF = (255, 153, 51); GOLD = (255, 214, 102); WHITE = (255, 255, 255)
 
@@ -20,7 +25,11 @@ PREVIEW = [float(x) for x in sys.argv[4:]] if len(sys.argv) > 3 and sys.argv[3] 
 os.makedirs(out_dir, exist_ok=True)
 DATA = json.load(open(script_path, encoding="utf-8"))
 SC = DATA["scenes"]
-FOOT = "Source: " + DATA.get("sources", "") if DATA.get("sources") else ""
+def _txt(v):
+    if isinstance(v, (list, tuple)): return ", ".join(str(x) for x in v if x)
+    return "" if v is None else str(v)
+DATA["sources"] = _txt(DATA.get("sources"))
+FOOT = ("Source: " + DATA["sources"]) if DATA["sources"] else ""
 
 _f = {}
 def F(p, s):
