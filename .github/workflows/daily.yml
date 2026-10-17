@@ -1,0 +1,66 @@
+name: daily-video
+on:
+  schedule:
+    - cron: "30 2 * * *"      # 02:30 UTC = 08:00 IST (GitHub may delay scheduled runs by several minutes)
+  workflow_dispatch: {}        # lets you run it by hand from the Actions tab
+
+permissions:
+  contents: write              # needed to publish the Release that holds the video
+
+concurrency:
+  group: daily-video
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install ffmpeg and Python packages
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y ffmpeg
+          pip install -r requirements.txt
+
+      - name: Cache Piper voice
+        id: voice-cache
+        uses: actions/cache@v4
+        with:
+          path: models
+          key: piper-voice-en-us-ryan-high-v1
+
+      - name: Download Piper voice (free, from GitHub releases)
+        if: steps.voice-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p models
+          curl -fL https://github.com/rhasspy/piper/releases/download/v0.0.2/voice-en-us-ryan-high.tar.gz | tar xz -C models
+          ls -la models
+
+      - name: Write today's script (free LLM)
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+        run: python pipeline/generate.py script.json
+
+      - name: Render video
+        run: python pipeline/render.py script.json out
+
+      - name: Publish as a GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="video-$(date -u +%Y%m%d-%H%M)"
+          TITLE=$(jq -r '.title' out/metadata.json)
+          NEEDS=$(jq -r '.needs_review' out/metadata.json)
+          NOTES=$(jq -r '.description' out/metadata.json)
+          FLAG=""
+          if [ "$NEEDS" = "true" ]; then FLAG="--prerelease"; NOTES="NEEDS HUMAN REVIEW BEFORE POSTING. $NOTES"; fi
+          gh release create "$TAG" out/video.mp4 out/metadata.json script.json --title "$TITLE" --notes "$NOTES" $FLAG
