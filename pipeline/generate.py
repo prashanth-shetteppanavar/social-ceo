@@ -60,12 +60,17 @@ def validate(d):
     d["needs_review"] = bool(d.get("needs_review", True))
     for k in ("title", "description"):
         if not d.get(k): raise ValueError("missing " + k)
-    d["title"] = d["title"][:95]; d.setdefault("tags", []); d.setdefault("sources", "")
+    flat = lambda v: ", ".join(str(x) for x in v if x) if isinstance(v, (list, tuple)) else ("" if v is None else str(v))
+    d["title"] = flat(d["title"])[:95]; d["description"] = flat(d["description"]); d["sources"] = flat(d.get("sources"))
+    t = d.get("tags") or []
+    d["tags"] = [x.strip() for x in t.split(",") if x.strip()] if isinstance(t, str) else [str(x) for x in t]
+    if isinstance(d["needs_review"], str): d["needs_review"] = d["needs_review"].strip().lower() != "false"
     for s in sc:
         for k in ("label", "main", "spoken"):
             if not s.get(k): raise ValueError("scene missing " + k)
         if isinstance(s["main"], str): s["main"] = [s["main"]]
-        s["main"] = [m[:26] for m in s["main"][:2]]; s["label"] = s["label"][:30].upper()
+        s["main"] = [str(m)[:26] for m in s["main"][:2]]; s["label"] = str(s["label"])[:30].upper(); s["spoken"] = str(s["spoken"])
+        if s.get("accent") is not None: s["accent"] = str(s["accent"])[:14]
         words = {bare(w) for w in s["spoken"].split()}
         if s.get("accent") and bare(s.get("accent_word", "")) not in words: s.pop("accent"); s.pop("accent_word", None)
         s["chips"] = [c for c in (s.get("chips") or [])[:4] if isinstance(c, dict) and c.get("text") and bare(c.get("at", "")) in words]
