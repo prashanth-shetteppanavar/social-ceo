@@ -2,7 +2,7 @@ name: daily-video
 on:
   schedule:
     - cron: "30 2 * * *"      # 02:30 UTC = 08:00 IST (GitHub may delay scheduled runs by several minutes)
-  workflow_dispatch: {}        # lets you run it by hand from the Actions tab
+  workflow_dispatch: {}        # run by hand from the Actions tab
 
 permissions:
   contents: write              # needed to publish the Release that holds the video
@@ -14,7 +14,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
@@ -29,18 +29,19 @@ jobs:
           sudo apt-get install -y ffmpeg
           pip install -r requirements.txt
 
-      - name: Cache Piper voice
+      - name: Cache Piper voices
         id: voice-cache
         uses: actions/cache@v4
         with:
           path: models
-          key: piper-voice-en-us-ryan-high-v1
+          key: piper-voices-ryan-lessac-v2
 
-      - name: Download Piper voice (free, from GitHub releases)
+      - name: Download Piper voices (free, from GitHub releases)
         if: steps.voice-cache.outputs.cache-hit != 'true'
         run: |
           mkdir -p models
           curl -fL https://github.com/rhasspy/piper/releases/download/v0.0.2/voice-en-us-ryan-high.tar.gz | tar xz -C models
+          curl -fL https://github.com/rhasspy/piper/releases/download/v0.0.2/voice-en-us-lessac-medium.tar.gz | tar xz -C models
           ls -la models
 
       - name: Write today's script (free LLM)
@@ -49,6 +50,12 @@ jobs:
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
         run: python pipeline/generate.py script.json
+
+      - name: Fetch optional stock B-roll (Pixabay)
+        continue-on-error: true
+        env:
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+        run: python pipeline/broll.py script.json out
 
       - name: Render video
         run: python pipeline/render.py script.json out
