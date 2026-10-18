@@ -21,7 +21,11 @@ RULES (strict):
 - 4 to 6 scenes. Each scene: label (<=26 chars, caps), main (1-2 lines, each <=22 chars), spoken (one or two short sentences).
 - Optional per scene: accent (<=12 chars caps) with accent_word (a word that appears in spoken), chips (up to 4 items, each text <=14 chars and at = a word in spoken), keywords (words to highlight).
 - Last scene is a call to action asking viewers to share.
-Return ONLY JSON: {"topic":"","title":"<=70 chars","description":"2-3 sentences + 3-5 hashtags","tags":[],"needs_review":true,"sources":"names of outlets from the headlines","scenes":[{"label":"","main":[""],"spoken":"","accent":"","accent_word":"","chips":[{"text":"","at":""}],"keywords":[]}]}"""
+- Choose "style" (the look of the video) from: festival (festivals, Diwali, culture), neon_tech (technology, AI, apps, gadgets), clean_news (rules, government, law, safety alerts), warm_story (science facts, stories, education, lifestyle), finance_green (money, savings, business, prices).
+- Per scene you MAY add "visual" (one of: globe, coin, chart, phone, shield, calendar, clock, battery, warning, bulb) with "visual_at" = a word from spoken, when the picture matches the meaning. For calendar add "visual_text" like "OCT 15". Do not add a visual when nothing fits.
+- Per scene you MAY add "number": {"value": 243, "prefix": "", "suffix": " DAYS", "label": "short caption", "at": "word in spoken"} but ONLY for a number that appears in the headlines or is simple arithmetic you show.
+- For at most 2 scenes add "broll": a 1-3 word search term for a generic stock video (e.g. "city traffic"). Never use B-roll to depict a real event or real person.
+Return ONLY JSON: {"style":"warm_story","topic":"","title":"<=70 chars","description":"2-3 sentences + 3-5 hashtags","tags":[],"needs_review":true,"sources":"names of outlets from the headlines","scenes":[{"label":"","main":[""],"spoken":"","accent":"","accent_word":"","chips":[{"text":"","at":""}],"visual":"","visual_at":"","number":null,"broll":"","keywords":[]}]}"""
 
 class HttpErr(Exception):
     def __init__(self, code, msg): super().__init__(f"HTTP {code}: {msg}"); self.code = code
@@ -54,6 +58,14 @@ def parse(text):
     return json.loads(text[s:e + 1])
 
 bare = lambda w: re.sub(r"\W", "", w).lower()
+VISUALS = {"globe", "coin", "chart", "phone", "shield", "calendar", "clock", "battery", "warning", "bulb"}
+STYLES_OK = {"festival", "neon_tech", "clean_news", "warm_story", "finance_green"}
+def guess_style(d):
+    t = (str(d.get("topic", "")) + " " + str(d.get("title", ""))).lower()
+    for style, words in (("festival", "diwali festival navratri holi eid christmas pongal"), ("neon_tech", "tech ai app phone gadget software battery"),
+                         ("finance_green", "money rupee price savings tax bank stock market loan"), ("clean_news", "rule law court government scam alert police")):
+        if any(w in t for w in words.split()): return style
+    return "warm_story"
 def validate(d):
     sc = d.get("scenes")
     if not isinstance(sc, list) or not 3 <= len(sc) <= 8: raise ValueError("need 3-8 scenes")
@@ -75,6 +87,25 @@ def validate(d):
         if s.get("accent") and bare(s.get("accent_word", "")) not in words: s.pop("accent"); s.pop("accent_word", None)
         s["chips"] = [c for c in (s.get("chips") or [])[:4] if isinstance(c, dict) and c.get("text") and bare(c.get("at", "")) in words]
         s["keywords"] = [w for w in (s.get("keywords") or []) if isinstance(w, str)]
+        if s.get("visual") not in VISUALS: s.pop("visual", None); s.pop("visual_at", None); s.pop("visual_text", None)
+        elif s.get("visual_at") and bare(str(s["visual_at"])) not in words: s.pop("visual_at", None)
+        n = s.get("number")
+        if isinstance(n, dict):
+            try: n["value"] = float(str(n["value"]).replace(",", ""))
+            except Exception: n = None
+            if n and n.get("at") and bare(str(n["at"])) not in words: n["at"] = None
+            if n:
+                for key_, ln in (("prefix", 6), ("suffix", 10), ("label", 44)): n[key_] = str(n.get(key_) or "")[:ln]
+            s["number"] = n
+        else: s.pop("number", None)
+        b = s.get("broll"); s["broll"] = str(b)[:40] if isinstance(b, str) and b.strip() else None
+        if not s["broll"]: s.pop("broll")
+    left = 2
+    for s in sc:
+        if s.get("broll"):
+            if left == 0: s.pop("broll")
+            else: left -= 1
+    if d.get("style") not in STYLES_OK: d["style"] = guess_style(d)
     return d
 
 # ---- model discovery: ask each provider which models exist TODAY ----
@@ -127,19 +158,19 @@ def try_model(url, key, model, hl):
 # ---- evergreen fallback (used only if every AI provider fails) ----
 def S(label, main, spoken, **kw): return dict(label=label, main=main, spoken=spoken, **kw)
 FALLBACKS = [
- {"topic": "Diwali safety basics", "title": "3 Simple Diwali Safety Tips for Your Family", "needs_review": True, "sources": "General safety guidance",
+ {"style": "festival", "topic": "Diwali safety basics", "title": "3 Simple Diwali Safety Tips for Your Family", "needs_review": True, "sources": "General safety guidance",
   "tags": ["Diwali", "safety", "Diwali tips"], "description": "Three simple safety habits for a safer festival with family. #Diwali #Safety #Shorts",
   "scenes": [S("DIWALI SAFETY", ["3 simple tips for", "a safer Diwali"], "Want a safer Diwali? Here are three simple tips.", keywords=["safer", "diwali"]),
    S("TIP ONE", ["Keep water", "close by"], "One. Keep a bucket of water or sand close by, just in case.", chips=[{"text": "Water", "at": "water"}, {"text": "Sand", "at": "sand"}], keywords=["water", "sand"]),
    S("TIP TWO", ["Choose your", "clothes wisely"], "Two. Wear snug cotton clothes and keep loose dupattas and sleeves away from diyas.", keywords=["cotton", "diyas"]),
    S("TIP THREE", ["Children need", "an adult nearby"], "Three. Keep children with an adult near any flame. Please share this with your family group.", accent="SHARE", accent_word="share", keywords=["children", "share"])]},
- {"topic": "UPI safety", "title": "UPI Safety: 3 Rules Everyone Should Know", "needs_review": True, "sources": "General safety guidance",
+ {"style": "clean_news", "topic": "UPI safety", "title": "UPI Safety: 3 Rules Everyone Should Know", "needs_review": True, "sources": "General safety guidance",
   "tags": ["UPI", "online safety", "scam alert"], "description": "Three simple rules to stay safe while using UPI. #UPI #ScamAlert #Shorts",
   "scenes": [S("UPI SAFETY", ["3 rules to avoid", "UPI scams"], "Do you use UPI? Here are three rules that help you avoid scams.", keywords=["upi", "scams"]),
-   S("RULE ONE", ["Never share", "your UPI PIN"], "One. Never share your UPI PIN with anyone, not even someone who says they are from your bank.", accent="NEVER", accent_word="never", keywords=["pin", "never"]),
+   S("RULE ONE", ["Never share", "your UPI PIN"], visual="shield", visual_at="pin", spoken="One. Never share your UPI PIN with anyone, not even someone who says they are from your bank.", accent="NEVER", accent_word="never", keywords=["pin", "never"]),
    S("RULE TWO", ["You do not enter a PIN", "to receive money"], "Two. You never need to enter your PIN to receive money. If a request asks for your PIN, it is a trap.", keywords=["pin", "receive", "trap"]),
    S("RULE THREE", ["Check the name", "before you pay"], "Three. Check the name shown before you pay. Share this with someone who needs it.", accent="SHARE", accent_word="share", keywords=["check", "share"])]},
- {"topic": "Phone battery care", "title": "Make Your Phone Battery Last Longer", "needs_review": True, "sources": "General tech guidance",
+ {"style": "neon_tech", "topic": "Phone battery care", "title": "Make Your Phone Battery Last Longer", "needs_review": True, "sources": "General tech guidance",
   "tags": ["phone battery", "tech tips"], "description": "Simple habits that are kind to your phone battery. #TechTips #Battery #Shorts",
   "scenes": [S("PHONE TIPS", ["Keep your battery", "healthy for longer"], "Want your phone battery to last longer? Try these habits.", keywords=["battery", "longer"]),
    S("HABIT ONE", ["Avoid", "extreme heat"], "One. Keep your phone away from heat, like a hot car dashboard or direct sun.", chips=[{"text": "Hot car", "at": "car"}, {"text": "Direct sun", "at": "sun"}], keywords=["heat", "sun"]),
